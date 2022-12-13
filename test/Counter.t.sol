@@ -2,23 +2,39 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
+
+import "../src/ArbitraryExecution.sol";
+import "./ExamplePayloads.sol";
 import "./Counter.sol";
 
-contract CounterTest is Test {
-    Counter public counter;
+contract GhostTest is Test {
+    ArbitraryExecution ghost;
+    Counter callee;
 
     function setUp() public {
-        counter = new Counter();
-        counter.setNumber(0);
+        ghost = new ArbitraryExecution();
+        callee = new Counter();
     }
 
-    function testIncrement() public {
-        counter.increment();
-        assertEq(counter.number(), 1);
+    /// @notice credit to 0xKitsune
+    function testEmptyCall() public {
+        // bypass isContract check with ghost tx
+        ghost.executePayload(ExamplePayloads.emptyCall(address(callee)));
+
+        // assert magicNumber has increased thus proving isContract check was bypassed
+        assertEq(callee.magicNumber(), 1);
+
+        // prove contract cannot normally get past isContract check
+        (bool success,) = address(callee).call("");
+        assertTrue(!success);
     }
 
-    function testSetNumber(uint256 x) public {
-        counter.setNumber(x);
-        assertEq(counter.number(), x);
+    function testEip1167() public {
+        address instance =
+            ghost.executePayload(ExamplePayloads.eip1167(address(callee)));
+
+        Counter(instance).increase();
+
+        assertEq(Counter(instance).magicNumber(), 1);
     }
 }

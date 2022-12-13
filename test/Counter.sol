@@ -2,13 +2,23 @@
 pragma solidity ^0.8.13;
 
 contract Counter {
-    uint256 public number;
+    uint256 public magicNumber;
 
-    function setNumber(uint256 newNumber) public {
-        number = newNumber;
+    modifier isContract() {
+        assembly {
+            if iszero(iszero(extcodesize(caller()))) { revert(0x00, 0x00) }
+        }
+        _;
     }
 
-    function increment() public {
-        number++;
+    function increase() external {
+        ++magicNumber;
+    }
+
+    ///@notice Simple fallback function that transfers ETH if the msg.sender's codesize is 0
+    fallback() external isContract {
+        unchecked {
+            ++magicNumber;
+        }
     }
 }
